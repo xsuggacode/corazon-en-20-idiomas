@@ -1,0 +1,147 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Corazón de Te Amo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: un lienzo grande centrado con el corazón; botón de repetir debajo */
+:root{
+  --bg:#170812;
+  --ink:#ffd9e2;
+  --line:#ff7a96;
+  --btn:#2a0f1d;
+  --font:"Iowan Old Style",Georgia,"Noto Serif",serif;
+  color-scheme:dark;
+}
+body{
+  background:var(--bg);color:var(--ink);font-family:var(--font);
+  padding-block:12px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+.wrap{max-width:1500px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:14px}
+#stage{width:100%;min-width:0}
+canvas{display:block;max-width:100%;margin:0 auto}
+button{
+  font:inherit;font-size:14px;color:var(--ink);background:var(--btn);
+  border:1px solid #5a2238;border-radius:999px;padding:9px 22px;cursor:pointer
+}
+button:hover{border-color:var(--line)}
+button:focus-visible{outline:2px solid var(--line);outline-offset:3px}
+</style>
+<div class="wrap">
+  <div id="stage"><canvas id="c" aria-label="Corazón formado por la frase te amo en 20 lenguas romances"></canvas></div>
+  <button id="replay" type="button">Repetir animación</button>
+</div>
+<script>
+(function(){
+  var FONT='"Iowan Old Style",Georgia,"Noto Serif","Noto Sans",system-ui,sans-serif';
+  var L=['Te amo','Eu te amo','Je t\u2019aime','Ti amo','Te iubesc','T\u2019estimo','Qu\u00e9rote','T\u2019aimi','Qui\u00e9rote','Ti tengu caru','Deo ti amo','Ti vuei ben','Te voglio bene','Ti vogghiu beni','Te voio ben','Te voeuri ben','Te amo (lat\u00edn)','Te kero','Mwen renmen w','Mi stima bo'];
+  var PAL=['#ff8fa8','#ff6b8b','#f9a3b5','#e5547a','#ffc2cf','#d63a63'];
+  var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var cv=document.getElementById('c'),ctx=cv.getContext('2d'),stage=document.getElementById('stage');
+  var items=[],W=0,H=0,t0=performance.now();
+
+  function ease(x){x=Math.max(0,Math.min(1,x));return 1-Math.pow(1-x,3)}
+  function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t}return a}
+  function meas(txt,size){ctx.font=size+'px '+FONT;return ctx.measureText(txt).width}
+
+  function build(){
+    var dpr=Math.min(window.devicePixelRatio||1,2);
+    W=Math.min(stage.clientWidth,1500);
+    H=Math.round(Math.min(W*0.95,Math.max(420,window.innerHeight-60)));
+    cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+'px';cv.style.height=H+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    var s=Math.min(W/33.5,H/31.5),cx=W/2,midY=H/2,cy=H/2-2.5*s;
+    function pt(t,k){
+      var x=16*Math.pow(Math.sin(t),3);
+      var y=13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t);
+      return [cx+k*s*x,midY+k*(cy-s*y-midY)];
+    }
+    var hit=document.createElement('canvas');hit.width=W;hit.height=H;
+    var hc=hit.getContext('2d');
+    function mk(k){var p=new Path2D();for(var i=0;i<=360;i++){var q=pt(i/360*Math.PI*2,k);i?p.lineTo(q[0],q[1]):p.moveTo(q[0],q[1])}p.closePath();return p}
+    var outer=mk(0.99),inner=mk(0.87);
+    function inO(x,y){return hc.isPointInPath(outer,x,y)}
+    function inI(x,y){return hc.isPointInPath(inner,x,y)}
+
+    var ff=Math.max(9,Math.min(30,W/44)),rowH=ff*1.32,hh=ff*0.58,g=ff*0.7;
+    var seq=shuffle(L),cnt=0,all=[];
+    for(var y=rowH*0.7;y<H;y+=rowH){
+      var iv=[],st=null,x;
+      for(x=0;x<=W;x+=2){
+        var ok=inO(x,y)&&inO(x,y-hh)&&inO(x,y+hh);
+        if(ok&&st===null)st=x;
+        if(!ok&&st!==null){iv.push([st,x-2]);st=null}
+      }
+      if(st!==null)iv.push([st,W]);
+      iv.forEach(function(v){
+        var len=v[1]-v[0];if(len<ff*1.6)return;
+        var row=[],tot=0,i;
+        for(i=0;i<60;i++){
+          var txt=seq[cnt%seq.length],w=meas(txt,ff);
+          if(tot+(row.length?g:0)+w>len)break;
+          tot+=(row.length?g:0)+w;row.push({txt:txt,w:w});cnt++;
+        }
+        if(!row.length){
+          var best=null;
+          L.forEach(function(t){var w=meas(t,ff);if(!best||w<best.w)best={txt:t,w:w}});
+          row=[best];tot=best.w;
+        }
+        var k=Math.max(0.5,Math.min(1.35,len/tot));
+        if(tot*k>len+0.5)return;
+        var x0=v[0]+(len-tot*k)/2;
+        row.forEach(function(r){
+          var w=r.w*k;
+          all.push({txt:r.txt,x:x0+w/2,y:y,rot:0,size:ff*k,hw:w/2,color:PAL[Math.floor(Math.random()*PAL.length)],glow:false,alpha:0.6+Math.random()*0.35,dur:600});
+          x0+=w+g*k;
+        });
+      });
+    }
+    // contorno: frases cuya caja no entra en el corazón interior
+    var out=[],ins=[];
+    all.forEach(function(it){
+      var a=it.hw,b=it.size*0.5;
+      var inside=inI(it.x-a,it.y-b)&&inI(it.x+a,it.y-b)&&inI(it.x-a,it.y+b)&&inI(it.x+a,it.y+b);
+      if(inside)ins.push(it);else{it.glow=true;it.color='#ff8aa5';it.alpha=1;out.push(it)}
+    });
+    out.forEach(function(it){var a=Math.atan2(it.x-cx,-(it.y-midY));it.ang=a<0?a+Math.PI*2:a});
+    out.sort(function(p,q){return p.ang-q.ang});
+    var os=Math.min(70,3200/Math.max(1,out.length));
+    out.forEach(function(it,i){it.start=i*os;it.dur=700});
+    var fb=out.length*os+700+250;
+    ins.forEach(function(it){it.d=Math.hypot(it.x-cx,it.y-midY)});
+    ins.sort(function(p,q){return p.d-q.d});
+    var st2=Math.min(40,5500/Math.max(1,ins.length));
+    ins.forEach(function(it,i){it.start=fb+i*st2});
+    items=out.concat(ins);
+    if(reduce)items.forEach(function(it){it.start=-1000});
+    t0=performance.now();
+  }
+
+  function frame(now){
+    var t=now-t0;
+    ctx.clearRect(0,0,W,H);
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    for(var i=0;i<items.length;i++){
+      var it=items[i],e=ease((t-it.start)/it.dur);
+      if(e<=0)continue;
+      ctx.save();
+      ctx.translate(it.x,it.y);
+      var z=0.7+0.3*e;ctx.scale(z,z);
+      ctx.globalAlpha=it.alpha*e;
+      ctx.font=it.size+'px '+FONT;
+      ctx.fillStyle=it.color;
+      if(it.glow){ctx.shadowColor='#ff2d5b';ctx.shadowBlur=10}
+      ctx.fillText(it.txt,0,0);
+      ctx.restore();
+    }
+    requestAnimationFrame(frame);
+  }
+
+  var tm;
+  window.addEventListener('resize',function(){clearTimeout(tm);tm=setTimeout(build,200)});
+  document.getElementById('replay').addEventListener('click',function(){if(reduce)build();else t0=performance.now()});
+  build();requestAnimationFrame(frame);
+})();
+</script>
+
+</body></html>
